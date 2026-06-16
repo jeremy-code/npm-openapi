@@ -9,6 +9,8 @@ The upstream project publishes its schema only as a blob download from a Redocly
 doc site. This repo makes the generated `openapi.yaml` / `openapi.json` directly accessible
 as plain files in a git repository.
 
+For [openapi.yaml](openapi.yaml) as a URL: https://raw.githubusercontent.com/jeremy-code/npm-openapi/refs/heads/main/openapi.yaml.
+
 ## Files
 
 | File           | Description                                         |
