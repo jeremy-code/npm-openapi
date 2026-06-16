@@ -1,5 +1,7 @@
 # npm-registry-openapi
 
+[![Sync NPM Registry OpenAPI Schema](https://github.com/jeremy-code/npm-openapi/actions/workflows/sync.yml/badge.svg)](https://github.com/jeremy-code/npm-openapi/actions/workflows/sync.yml)
+
 A hosted mirror of the [NPM Registry OpenAPI schema](https://github.com/npm/api-documentation),
 automatically synced via GitHub Actions.
 
