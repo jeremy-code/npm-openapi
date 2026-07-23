@@ -5,32 +5,44 @@ on:
     - cron: "0 6 * * *" # Daily at 06:00 UTC
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
-  sync:
-    name: Check upstream and sync schema
+  check-for-updates:
+    name: Check upstream for updates
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
+    outputs:
+      latest_sha: ${{ steps.upstream.outputs.latest_sha }}
+      changed: ${{ steps.upstream.outputs.changed }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Check upstream for api/ changes
+      - name: Check upstream for OpenAPI schema changes
         id: upstream
         env:
+          # https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-github-cli
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
+          PREVIOUS_SHA=""
+          if [ -f ".npm-api-sha" ]; then
+            PREVIOUS_SHA=$(cat ".npm-api-sha")
+          fi
 
-          # SHA of the most recent commit that touched the api/ directory
-          LATEST_SHA=$(curl --silent --fail \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/npm/api-documentation/commits?path=api&per_page=1" \
-            | jq -r '.[0].sha')
+          OWNER="npm"
+          REPO="api-documentation"
+          PATH="api" # Location of schemas
+
+          # SHA of the most recent commit that touched the schema directory
+          LATEST_SHA=$(curl --fail --location --silent \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2026-03-10" \
+            "https://api.github.com/repos/${OWNER}/${REPO}/commits?path=${PATH}&per_page=1" \
+            | jq --raw-output '.[0].sha')
 
           if [[ -z "$LATEST_SHA" || "$LATEST_SHA" == "null" ]]; then
             echo "::error::Could not retrieve upstream SHA. Check GitHub API access."
@@ -39,52 +51,53 @@ jobs:
 
           echo "latest_sha=$LATEST_SHA" >> "$GITHUB_OUTPUT"
 
-          STORED_SHA=$(cat .npm-api-sha 2>/dev/null || echo "")
-          echo "Upstream SHA : $LATEST_SHA"
-          echo "Stored SHA   : ${STORED_SHA:-<none yet — first run>}"
+          echo "Previous SHA        : ${PREVIOUS_SHA:-<none>}"
+          echo "Latest upstream SHA : $LATEST_SHA"
 
-          if [[ "$LATEST_SHA" == "$STORED_SHA" ]]; then
+          if [[ "$LATEST_SHA" == "$PREVIOUS_SHA" ]]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Already up to date. Nothing to do."
+            echo "Already up to date. Exiting..."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "New commits detected in api/ — will regenerate schema."
+            echo "New commits detected in ${PATH}. Regenerating OpenAPI schema..."
           fi
 
+  sync:
+    name: Regenerate OpenAPI schema
+    permissions:
+      contents: write
+      pull-requests: write
+    needs: check-for-updates
+    if: needs.check-for-updates.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
       - name: Set up Node.js
-        if: steps.upstream.outputs.changed == 'true'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
+          # https://github.com/npm/api-documentation/blob/5d24314331f8b0bcb64519db1ee5b1c7b7c85d88/.github/workflows/ci.yml#L36
           node-version: 22.x
           cache: "npm"
 
       - name: Clone npm/api-documentation and generate schema
-        if: steps.upstream.outputs.changed == 'true'
         run: |
-          set -euo pipefail
-          git clone --depth=1 https://github.com/npm/api-documentation.git /tmp/npm-api
-          cd /tmp/npm-api
+          git clone --depth=1 https://github.com/npm/api-documentation.git $RUNNER_TEMP/npm-api
+          cd $RUNNER_TEMP/npm-api
           npm ci
-          npm run generate   # → writes openapi.yaml to /tmp/npm-api/openapi.yaml
+          npm run generate # writes $RUNNER_TEMP/npm-api/openapi.yaml
 
       - name: Copy generated schema
-        if: steps.upstream.outputs.changed == 'true'
         run: |
-          cp /tmp/npm-api/openapi.yaml ./openapi.yaml
+          cp $RUNNER_TEMP/npm-api/openapi.yaml ./openapi.yaml
+          # Convert YAML to JSON
+          yq --output-format json openapi.yaml > openapi.json
           # Record which upstream commit we just processed
-          echo "${{ steps.upstream.outputs.latest_sha }}" > .npm-api-sha
+          echo "${{ needs.check-for-updates.outputs.latest_sha }}" > .npm-api-sha
 
-      - name: Convert YAML schema to JSON
-        if: steps.upstream.outputs.changed == 'true'
-        run: |
-          python3 -c "
-          import yaml, json
-          schema = yaml.safe_load(open('openapi.yaml').read())
-          json.dump(schema, open('openapi.json', 'w'), indent=2)
-          print('openapi.json written.')
-          "
       - name: Open or update pull request
-        if: steps.upstream.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -93,7 +106,7 @@ jobs:
           commit-message: |
             chore: sync npm registry OpenAPI schema
 
-            Upstream commit: ${{ steps.upstream.outputs.latest_sha }}
+            Upstream commit: ${{ needs.check-for-updates.outputs.latest_sha }}
           title: "chore: sync NPM Registry OpenAPI schema"
           body: |
             ## NPM API documentation updated
@@ -101,7 +114,7 @@ jobs:
             The `api/` directory in [npm/api-documentation](https://github.com/npm/api-documentation)
             has new commits since the last sync.
 
-            **Upstream commit:** [`${{ steps.upstream.outputs.latest_sha }}`](https://github.com/npm/api-documentation/commit/${{ steps.upstream.outputs.latest_sha }})
+            **Upstream commit:** [`${{ needs.check-for-updates.outputs.latest_sha }}`](https://github.com/npm/api-documentation/commit/${{ needs.check-for-updates.outputs.latest_sha }}')
 
             ### What changed
             Review the diff on `openapi.yaml` / `openapi.json` for the full schema delta.
