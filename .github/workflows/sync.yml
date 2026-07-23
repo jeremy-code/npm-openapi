@@ -84,7 +84,7 @@ jobs:
         with:
           # https://github.com/npm/api-documentation/blob/5d24314331f8b0bcb64519db1ee5b1c7b7c85d88/.github/workflows/ci.yml#L36
           node-version: 22.x
-          cache: "npm"
+          package-manager-cache: false
 
       - name: Clone npm/api-documentation and generate schema
         run: |
