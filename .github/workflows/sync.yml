@@ -36,14 +36,15 @@ jobs:
             PREVIOUS_SHA=$(cat ".npm-api-sha")
           fi
 
-          GH_REPO="npm/api-documentation"
+          OWNER="npm"
+          REPO="api-documentation"
           SCHEMA_PATH="api" # Location of schemas
 
           # SHA of the most recent commit that touched the schema directory
           # https://docs.github.com/en/rest/commits/commits
           LATEST_SHA=$(
             gh api \
-              repos/{owner}/{repo}/commits \
+              repos/${OWNER}/${REPO}/commits \
               --method GET \
               --header "X-GitHub-Api-Version: 2026-03-10" \
               --jq '.[0].sha' \
