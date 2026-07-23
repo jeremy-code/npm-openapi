@@ -1,4 +1,4 @@
-# npm-registry-openapi
+# npm-openapi
 
 [![Sync NPM Registry OpenAPI Schema](https://github.com/jeremy-code/npm-openapi/actions/workflows/sync.yml/badge.svg)](https://github.com/jeremy-code/npm-openapi/actions/workflows/sync.yml)
 
@@ -23,7 +23,7 @@ For [openapi.yaml](openapi.yaml) as a URL: https://raw.githubusercontent.com/jer
 
 A scheduled GitHub Actions workflow:
 
-1. Calls the GitHub API to get the latest commit SHA that touched `api/` in `npm/api-documentation`
+1. Calls the GitHub API to get the latest commit SHA that touched `api/` in [`npm/api-documentation`](https://github.com/npm/api-documentation)
 2. Compares it to the SHA stored in `.npm-api-sha`
 3. If there are new commits, clones the upstream repo, runs `npm run generate` (which invokes
    `openapi-merge-cli`), converts the output to JSON, and opens a pull request
