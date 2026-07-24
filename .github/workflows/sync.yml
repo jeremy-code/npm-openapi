@@ -99,9 +99,10 @@ jobs:
 
       - name: Copy generated schema
         run: |
-          cp $RUNNER_TEMP/npm-api/openapi.yaml ./openapi.yaml
-          # Convert YAML to JSON
-          yq --output-format json openapi.yaml > openapi.json
+          # Bundle OpenAPI schema since references to
+          # ./api/shared-components.yaml are made
+          npx @redocly/cli bundle $RUNNER_TEMP/npm-api/openapi.yaml --output openapi.yaml
+          npx @redocly/cli bundle $RUNNER_TEMP/npm-api/openapi.yaml --output openapi.json
           # Record which upstream commit we just processed
           echo "${{ needs.check-for-updates.outputs.latest_sha }}" > .npm-api-sha
 
