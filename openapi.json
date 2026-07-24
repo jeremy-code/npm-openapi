@@ -49,13 +49,13 @@
     "/-/team/{orgName}/{teamName}/package": {
       "parameters": [
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/OrgName"
+          "$ref": "#/components/parameters/OrgName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/TeamName"
+          "$ref": "#/components/parameters/TeamName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/RequiredBearerToken"
+          "$ref": "#/components/parameters/RequiredBearerToken"
         }
       ],
       "get": {
@@ -75,7 +75,7 @@
             "$ref": "#/components/responses/PackageAccessLevels"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       },
@@ -116,10 +116,10 @@
         ],
         "responses": {
           "201": {
-            "$ref": "./api/shared-components.yaml#/components/responses/EmptySuccess"
+            "$ref": "#/components/responses/EmptySuccess"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       },
@@ -136,10 +136,10 @@
         ],
         "responses": {
           "204": {
-            "$ref": "./api/shared-components.yaml#/components/responses/EmptySuccess"
+            "$ref": "#/components/responses/EmptySuccess"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       }
@@ -147,10 +147,10 @@
     "/-/org/{orgName}/package": {
       "parameters": [
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/OrgName"
+          "$ref": "#/components/parameters/OrgName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/RequiredBearerToken"
+          "$ref": "#/components/parameters/RequiredBearerToken"
         }
       ],
       "get": {
@@ -170,7 +170,7 @@
             "$ref": "#/components/responses/PackageAccessLevels"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       }
@@ -178,10 +178,10 @@
     "/-/package/{escapedPackageName}/collaborators": {
       "parameters": [
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/EscapedPackageName"
+          "$ref": "#/components/parameters/EscapedPackageName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/RequiredBearerToken"
+          "$ref": "#/components/parameters/RequiredBearerToken"
         }
       ],
       "get": {
@@ -200,7 +200,7 @@
             "$ref": "#/components/responses/UserAccessLevels"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       }
@@ -208,10 +208,10 @@
     "/-/package/{escapedPackageName}/visibility": {
       "parameters": [
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/EscapedPackageName"
+          "$ref": "#/components/parameters/EscapedPackageName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/RequiredBearerToken"
+          "$ref": "#/components/parameters/RequiredBearerToken"
         }
       ],
       "get": {
@@ -230,7 +230,7 @@
             "$ref": "#/components/responses/PackageVisibility"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       }
@@ -238,7 +238,7 @@
     "/-/package/{escapedPackageName}/access": {
       "parameters": [
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/EscapedPackageName"
+          "$ref": "#/components/parameters/EscapedPackageName"
         }
       ],
       "post": {
@@ -282,10 +282,10 @@
         ],
         "responses": {
           "200": {
-            "$ref": "./api/shared-components.yaml#/components/responses/EmptySuccess"
+            "$ref": "#/components/responses/EmptySuccess"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       }
@@ -470,10 +470,10 @@
     "/-/org/{orgName}/user": {
       "parameters": [
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/OrgName"
+          "$ref": "#/components/parameters/OrgName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/RequiredBearerToken"
+          "$ref": "#/components/parameters/RequiredBearerToken"
         }
       ],
       "get": {
@@ -493,7 +493,7 @@
             "$ref": "#/components/responses/OrgMembers"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       },
@@ -539,7 +539,7 @@
             "$ref": "#/components/responses/OrgInvite"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       },
@@ -573,10 +573,10 @@
         },
         "responses": {
           "204": {
-            "$ref": "./api/shared-components.yaml#/components/responses/EmptySuccess"
+            "$ref": "#/components/responses/EmptySuccess"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       }
@@ -584,10 +584,10 @@
     "/{escapedPackageName}": {
       "parameters": [
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/EscapedPackageName"
+          "$ref": "#/components/parameters/EscapedPackageName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/RequiredBearerToken"
+          "$ref": "#/components/parameters/RequiredBearerToken"
         }
       ],
       "put": {
@@ -783,7 +783,7 @@
             "$ref": "#/components/responses/PublishSuccess"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       }
@@ -1373,10 +1373,10 @@
     "/-/org/{orgName}/team": {
       "parameters": [
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/OrgName"
+          "$ref": "#/components/parameters/OrgName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/RequiredBearerToken"
+          "$ref": "#/components/parameters/RequiredBearerToken"
         }
       ],
       "get": {
@@ -1396,7 +1396,7 @@
             "$ref": "#/components/responses/OrgTeams"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       },
@@ -1457,7 +1457,7 @@
             }
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       }
@@ -1465,13 +1465,13 @@
     "/-/org/{orgName}/{teamName}": {
       "parameters": [
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/OrgName"
+          "$ref": "#/components/parameters/OrgName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/TeamName"
+          "$ref": "#/components/parameters/TeamName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/RequiredBearerToken"
+          "$ref": "#/components/parameters/RequiredBearerToken"
         }
       ],
       "delete": {
@@ -1488,10 +1488,10 @@
         ],
         "responses": {
           "204": {
-            "$ref": "./api/shared-components.yaml#/components/responses/EmptySuccess"
+            "$ref": "#/components/responses/EmptySuccess"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       }
@@ -1499,13 +1499,13 @@
     "/-/org/{orgName}/{teamName}/user": {
       "parameters": [
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/OrgName"
+          "$ref": "#/components/parameters/OrgName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/TeamName"
+          "$ref": "#/components/parameters/TeamName"
         },
         {
-          "$ref": "./api/shared-components.yaml#/components/parameters/RequiredBearerToken"
+          "$ref": "#/components/parameters/RequiredBearerToken"
         }
       ],
       "get": {
@@ -1525,7 +1525,7 @@
             "$ref": "#/components/responses/TeamUsers"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       },
@@ -1562,10 +1562,10 @@
         ],
         "responses": {
           "201": {
-            "$ref": "./api/shared-components.yaml#/components/responses/EmptySuccess"
+            "$ref": "#/components/responses/EmptySuccess"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       },
@@ -1601,10 +1601,10 @@
         ],
         "responses": {
           "204": {
-            "$ref": "./api/shared-components.yaml#/components/responses/EmptySuccess"
+            "$ref": "#/components/responses/EmptySuccess"
           },
           "401": {
-            "$ref": "./api/shared-components.yaml#/components/responses/Unauthorized"
+            "$ref": "#/components/responses/Unauthorized-2"
           }
         }
       }
@@ -4101,6 +4101,49 @@
             }
           }
         }
+      },
+      "Unauthorized-2": {
+        "description": "Unauthorized",
+        "headers": {
+          "www-authenticate": {
+            "description": "Authentication challenge (e.g., \"OTP\" when OTP is required)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "npm-notice": {
+            "description": "Additional notice information",
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "description": "Error message"
+                }
+              }
+            },
+            "example": {
+              "error": "Missing \"Bearer\" header."
+            }
+          }
+        }
+      },
+      "EmptySuccess": {
+        "description": "Success",
+        "content": {
+          "*/*": {
+            "schema": {
+              "not": {}
+            }
+          }
+        }
       }
     },
     "schemas": {
@@ -4797,6 +4840,46 @@
             ]
           }
         }
+      }
+    },
+    "parameters": {
+      "OrgName": {
+        "name": "orgName",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Name of an org"
+      },
+      "TeamName": {
+        "name": "teamName",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Name of a team"
+      },
+      "RequiredBearerToken": {
+        "name": "Authorization",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^Bearer .+"
+        },
+        "description": "Bearer token for authentication. Must be an npm access token.\n\n**Format:** `Bearer <token>`\n\n**Accepted token types:**\n- npm access token (traditional user token created via `npm login`)\n"
+      },
+      "EscapedPackageName": {
+        "name": "escapedPackageName",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The name of a package.  Scoped packages need \"/\" to be url encoded to \"%2F\"",
+        "example": "@npmcli%2Farborist"
       }
     }
   },
