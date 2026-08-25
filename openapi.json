@@ -27,7 +27,7 @@
     {
       "name": "Authentication",
       "x-displayName": "Authentication & Authorization",
-      "description": "The npm registry API supports multiple types of bearer tokens for authentication:\n\n**Token Types:**\n\n**1. npm Session Token (`npmSessionToken`)**\nTraditional npm session tokens created via `npm login`. These tokens:\n- Are tied to a user account\n- Inherit the user's permissions\n- Have limited expiration\n- **Required for:** User account management, token creation/management\n\n**2. npm Access Token (`npmAccessToken`)**\nFine-grained tokens with specific permissions:\n- Can be scoped to specific packages and organizations\n- Can be scoped to specific operations (read, write, publish)\n- Have configurable expiration\n- **Supported for:** Most package operations where explicitly documented\n\n**3. OIDC id_token (`oidcIdToken`)**\nTokens from supported Identity Providers (CI/CD systems):\n- From GitHub Actions, GitLab CI, CircleCI, etc.\n- Must have `aud` claim set to `npm:registry.npmjs.org`\n- Short-lived tokens\n- **Required for:** OIDC token exchange only\n\n**4. OIDC Exchange Token (`oidcExchangeToken`)**\nShort-lived tokens obtained from OIDC token exchange:\n- Package-scoped permissions\n- Limited lifetime (typically 1 hour)\n- **Supported for:** Package publishing and management operations\n\n**Endpoint Authorization:**\n\nEach endpoint specifies which token types are accepted via security schemes.\nSome endpoints may accept multiple token types, others are restricted to specific types.\n\n**Example:**\n- `/tokens` endpoint: Only accepts `npmSessionToken`\n- `/oidc/token/exchange` endpoint: Only accepts `oidcIdToken`\n- Package publishing: May accept `npmSessionToken`, `npmAccessToken`, or `oidcExchangeToken`\n"
+      "description": "The npm registry API supports multiple types of bearer tokens for authentication:\n\n**Token Types:**\n\n**1. npm Session Token (`npmSessionToken`)**\nTraditional npm session tokens created via `npm login`. These tokens:\n- Are tied to a user account\n- Inherit the user's permissions\n- Have limited expiration\n- **Required for:** User account management, token creation/management\n\n**2. npm Access Token (`npmAccessToken`)**\nFine-grained tokens with specific permissions:\n- Can be scoped to specific packages and organizations\n- Can be scoped to specific operations (read, write, publish)\n- Have configurable expiration\n- **Supported for:** Most package operations where explicitly documented\n\n**3. OIDC id_token (`oidcIdToken`)**\nTokens from supported Identity Providers (CI/CD systems):\n- From GitHub Actions, GitLab CI, CircleCI, etc.\n- Must have `aud` claim set to `npm:registry.npmjs.org`\n- Short-lived tokens\n- **Required for:** OIDC token exchange only\n\n**4. OIDC Exchange Token (`oidcExchangeToken`)**\nShort-lived tokens obtained from OIDC token exchange:\n- Package-scoped permissions\n- Limited lifetime (typically 1 hour)\n- **Supported for:** Package publishing and management operations\n\n**Endpoint Authorization:**\n\nEach endpoint specifies which token types are accepted via security schemes.\nSome endpoints may accept multiple token types, others are restricted to specific types.\n\n**Example:**\n- `/tokens` endpoint: Only accepts `npmSessionToken`\n- `/oidc/token/exchange` endpoint: Only accepts `oidcIdToken`\n- Package publishing: May accept `npmSessionToken`, `npmAccessToken`, or `oidcExchangeToken`\n\n**Granular Access Tokens with `bypass_2fa`:**\n\nGranular Access Tokens (GATs) created with `bypass_2fa: true` are\nallowed to perform automation flows such as direct publish, but they\nare **not** permitted to perform account-identity or governance write\noperations. Requests to those endpoints authenticated with a\nbypass-2FA GAT are rejected with `403 Forbidden` and must instead be\nperformed via an interactive 2FA challenge (npm website, or an npm\nsession token / non-bypass GAT with a valid `npm-otp`).\n\nOperations rejected for bypass-2FA GATs include (non-exhaustive):\n\n- Token management — `POST /-/npm/v1/tokens`, `DELETE /-/npm/v1/tokens/token/{token}`\n- Account settings — change password, change email, change 2FA\n  configuration, generate recovery codes, update profile\n- Package governance — `POST /-/package/{escapedPackageName}/access`,\n  `POST /-/package/{package}/trust`,\n  `DELETE /-/package/{package}/trust/{config-uuid}`,\n  maintainer edits, and package/binary deletion (unpublish)\n- Org and team governance —\n  `PUT`/`DELETE /-/org/{orgName}/user`,\n  `PUT /-/org/{orgName}/team`,\n  `DELETE /-/org/{orgName}/{teamName}`,\n  `PUT`/`DELETE /-/org/{orgName}/{teamName}/user`,\n  `PUT`/`DELETE /-/team/{orgName}/{teamName}/package`\n\nDirect publish (`PUT /{escapedPackageName}`) remains functional for\nbypass-2FA GATs.\n"
     },
     {
       "name": "Tokens",
@@ -43,6 +43,11 @@
       "name": "Trust",
       "x-displayName": "Trust",
       "description": "Trust-related endpoints for managing package trust and security settings.\n"
+    },
+    {
+      "name": "Packages",
+      "x-displayName": "Packages",
+      "description": "Package metadata and lifecycle endpoints.\n"
     }
   ],
   "paths": {
@@ -84,6 +89,7 @@
           "Access"
         ],
         "summary": "Grant access to a package for a team",
+        "description": "Grant a team access to a package.\n\nGranular Access Tokens with `bypass_2fa: true` are not permitted to\ncall this endpoint and receive `403 Forbidden`. This operation must\nbe performed via an interactive 2FA challenge.\n",
         "operationId": "createTeamPackageGrant",
         "requestBody": {
           "required": true,
@@ -112,6 +118,12 @@
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "responses": {
@@ -120,6 +132,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized-2"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
           }
         }
       },
@@ -128,10 +143,17 @@
           "Access"
         ],
         "summary": "Remove access to a package for a team",
+        "description": "Remove a team's access to a package.\n\nGranular Access Tokens with `bypass_2fa: true` are not permitted to\ncall this endpoint and receive `403 Forbidden`. This operation must\nbe performed via an interactive 2FA challenge.\n",
         "operationId": "deleteTeamPackageGrant",
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "responses": {
@@ -140,6 +162,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized-2"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
           }
         }
       }
@@ -246,6 +271,7 @@
           "Access"
         ],
         "summary": "Sets the various access levels for a package.",
+        "description": "Set package visibility and 2FA/automation policy for a package.\n\nGranular Access Tokens with `bypass_2fa: true` are not permitted to\ncall this endpoint and receive `403 Forbidden`. This operation must\nbe performed via an interactive 2FA challenge.\n",
         "operationId": "setPackageAccess",
         "requestBody": {
           "required": true,
@@ -278,6 +304,12 @@
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "responses": {
@@ -286,6 +318,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized-2"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
           }
         }
       }
@@ -502,11 +537,17 @@
           "Org"
         ],
         "summary": "Set user membership in an org",
-        "description": "Set a user's membership in an org. If the user is not already a member, an invite will be sent.",
+        "description": "Set a user's membership in an org. If the user is not already a member, an invite will be sent.\n\nGranular Access Tokens with `bypass_2fa: true` are not permitted to\ncall this endpoint and receive `403 Forbidden`. This operation must\nbe performed via an interactive 2FA challenge.\n",
         "operationId": "changeOrgMembership",
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "requestBody": {
@@ -540,6 +581,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized-2"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
           }
         }
       },
@@ -548,11 +592,17 @@
           "Org"
         ],
         "summary": "Remove user membership in an org",
-        "description": "Remove a user's membership in an org",
+        "description": "Remove a user's membership in an org.\n\nGranular Access Tokens with `bypass_2fa: true` are not permitted to\ncall this endpoint and receive `403 Forbidden`. This operation must\nbe performed via an interactive 2FA challenge.\n",
         "operationId": "deleteOrgMembership",
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "requestBody": {
@@ -577,6 +627,100 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized-2"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
+          }
+        }
+      }
+    },
+    "/-/package/{package-name}/version/{version}/status": {
+      "get": {
+        "tags": [
+          "Packages"
+        ],
+        "summary": "Get the lifecycle status of an exact package version.",
+        "description": "Returns the current lifecycle status of an exact package version. The response may represent validation progress, manual approval, or publication without exposing validation-system details.\n\nThe authenticated user must have publish access to the package. A package authorization failure is returned as not found.\n",
+        "operationId": "getPackageVersionStatus",
+        "parameters": [
+          {
+            "name": "package-name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact package name. Scoped names must be URL-encoded with the slash escaped."
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact semantic version."
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^Bearer .+"
+            },
+            "description": "An npm access token or granular access token for a package maintainer."
+          }
+        ],
+        "security": [
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current lifecycle status of the package version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackageVersionStatus"
+                },
+                "examples": {
+                  "validationInProgress": {
+                    "summary": "The version is still being processed",
+                    "value": {
+                      "packageName": "@npmcli/example-package",
+                      "version": "1.2.3",
+                      "status": "validating"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/PackageVersionStatusBadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/PackageVersionStatusUnauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/PackageVersionStatusForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/PackageVersionStatusNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/PackageVersionStatusTooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/PackageVersionStatusInternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/PackageVersionStatusUnavailable"
           }
         }
       }
@@ -840,7 +984,7 @@
           "Stage"
         ],
         "summary": "Fetch a list of all staged package versions for the authenticated user.",
-        "description": "Retrieve staged package versions that are awaiting maintainer review.\n\nThis endpoint returns only items visible to the authenticated user. Results will be returned \nin the order of most recently staged first in a descending order. Results are\npaginated and can be filtered by package name using the `package` query parameter.\n\n## Requirements\n- User MUST be authenticated with a valid npm token\n",
+        "description": "Retrieve staged package versions that are undergoing automated validation or\nawaiting maintainer review.\n\nThis endpoint returns only items visible to the authenticated user. Results will be returned \nin the order of most recently staged first in a descending order. Results are\npaginated and can be filtered by package name using the `package` query parameter.\n\n## Requirements\n- User MUST be authenticated with a valid npm token\n",
         "operationId": "getStageItems",
         "parameters": [
           {
@@ -914,7 +1058,8 @@
                           "actor": "octocat",
                           "actorType": "user",
                           "access": "public",
-                          "shasum": "4f7f5f1d5bcf2f72f6e4d6c4f3b2812d8a2f6c19"
+                          "shasum": "4f7f5f1d5bcf2f72f6e4d6c4f3b2812d8a2f6c19",
+                          "status": "validating"
                         },
                         {
                           "id": "f8e7a45b-7a5f-4f31-8e6d-9dd1c6ef38c0",
@@ -925,7 +1070,8 @@
                           "actor": "npm-bot",
                           "actorType": "trusted automation",
                           "access": "private",
-                          "shasum": "8eb3b4e9b6e3d0d2c86be1e6d4f43f4be62e80ad"
+                          "shasum": "8eb3b4e9b6e3d0d2c86be1e6d4f43f4be62e80ad",
+                          "status": "staged"
                         }
                       ],
                       "page": 0,
@@ -1405,7 +1551,7 @@
           "Team"
         ],
         "summary": "Create a new team",
-        "description": "Create a new team for an org",
+        "description": "Create a new team for an org.\n\nGranular Access Tokens with `bypass_2fa: true` are not permitted to\ncall this endpoint and receive `403 Forbidden`. This operation must\nbe performed via an interactive 2FA challenge.\n",
         "operationId": "putScopeTeam",
         "requestBody": {
           "required": true,
@@ -1434,6 +1580,12 @@
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "responses": {
@@ -1458,6 +1610,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized-2"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
           }
         }
       }
@@ -1479,11 +1634,17 @@
           "Team"
         ],
         "summary": "Delete a team",
-        "description": "Delete a team from a given org",
+        "description": "Delete a team from a given org.\n\nGranular Access Tokens with `bypass_2fa: true` are not permitted to\ncall this endpoint and receive `403 Forbidden`. This operation must\nbe performed via an interactive 2FA challenge.\n",
         "operationId": "deleteTeam",
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "responses": {
@@ -1492,6 +1653,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized-2"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
           }
         }
       }
@@ -1534,7 +1698,7 @@
           "Team"
         ],
         "summary": "Add a user to a team",
-        "description": "Add a user to a team in an org. The user must already be a member of the org.",
+        "description": "Add a user to a team in an org. The user must already be a member of the org.\n\nGranular Access Tokens with `bypass_2fa: true` are not permitted to\ncall this endpoint and receive `403 Forbidden`. This operation must\nbe performed via an interactive 2FA challenge.\n",
         "operationId": "createTeamMembership",
         "requestBody": {
           "required": true,
@@ -1558,6 +1722,12 @@
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "responses": {
@@ -1566,6 +1736,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized-2"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
           }
         }
       },
@@ -1574,6 +1747,7 @@
           "Team"
         ],
         "summary": "Remove a user from a team",
+        "description": "Remove a user from a team.\n\nGranular Access Tokens with `bypass_2fa: true` are not permitted to\ncall this endpoint and receive `403 Forbidden`. This operation must\nbe performed via an interactive 2FA challenge.\n",
         "operationId": "deleteTeamMembership",
         "requestBody": {
           "required": true,
@@ -1597,6 +1771,12 @@
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "responses": {
@@ -1605,6 +1785,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized-2"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
           }
         }
       }
@@ -1615,7 +1798,7 @@
           "Tokens"
         ],
         "summary": "Create npm access token",
-        "description": "Create a new npm access token with customizable permissions, scope restrictions,\nexpiration, and CIDR IP range limitations.\n\n**Requirements:**\n- Must be authenticated\n- **Two-factor authentication is required for this endpoint**\n  - If 2FA is enabled on your account, provide the OTP via the `npm-otp` header\n  - If 2FA is not enabled, an email OTP will be sent and must be provided via the `npm-otp` header\n  - For WebAuthn users, the OTP is returned in the `doneUrl` after authentication\n\n**Important notices:**\n- All responses include security notices via the `npm-notice` header regarding token limitations\n",
+        "description": "Create a new npm access token with customizable permissions, scope restrictions,\nexpiration, and CIDR IP range limitations.\n\n**Requirements:**\n- Must be authenticated\n- **Two-factor authentication is required for this endpoint**\n  - If 2FA is enabled on your account, provide the OTP via the `npm-otp` header\n  - If 2FA is not enabled, an email OTP will be sent and must be provided via the `npm-otp` header\n  - For WebAuthn users, the OTP is returned in the `doneUrl` after authentication\n- **Granular Access Tokens with `bypass_2fa: true` are not permitted**\n  to call this endpoint and receive `403 Forbidden`. Token creation\n  (and escalation) requires an interactive 2FA challenge.\n\n**Important notices:**\n- All responses include security notices via the `npm-notice` header regarding token limitations\n",
         "operationId": "createToken",
         "parameters": [
           {
@@ -1695,7 +1878,7 @@
                   },
                   "bypass_2fa": {
                     "type": "boolean",
-                    "description": "Allow token to bypass 2FA requirements",
+                    "description": "Allow token to bypass 2FA requirements for automation\nflows such as direct publish.\n\nTokens created with `bypass_2fa: true` **cannot** perform\naccount, token, or org/team/package governance write\noperations (for example: creating or deleting tokens,\nchanging package access or trust configuration,\nadding/removing org or team members, granting/revoking\nteam package access, unpublishing). Those requests are\nrejected with `403 Forbidden` and must be performed via\nan interactive 2FA challenge.\n",
                     "default": false
                   },
                   "cidr": {
@@ -1757,6 +1940,12 @@
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "responses": {
@@ -1810,7 +1999,7 @@
                     },
                     "bypass_2fa": {
                       "type": "boolean",
-                      "description": "Indicates if the token can bypass 2FA requirements."
+                      "description": "Indicates if the token can bypass 2FA requirements for\nautomation flows. When `true`, the token is rejected\n(`403 Forbidden`) by account, token, and org/team/package\ngovernance write endpoints.\n"
                     },
                     "revoked": {
                       "type": "string",
@@ -1960,6 +2149,9 @@
           "401": {
             "$ref": "#/components/responses/UnauthorizedWithWebAuth"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
+          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -2070,7 +2262,7 @@
                           },
                           "bypass_2fa": {
                             "type": "boolean",
-                            "description": "Indicates if the token can bypass 2FA requirements"
+                            "description": "Indicates if the token can bypass 2FA\nrequirements for automation flows. When `true`,\nthe token is rejected (`403 Forbidden`) by\naccount, token, and org/team/package governance\nwrite endpoints.\n"
                           },
                           "cidr": {
                             "type": "array",
@@ -2208,7 +2400,7 @@
           "Tokens"
         ],
         "summary": "Delete npm access token",
-        "description": "Delete an npm access token. The token can be specified as:\n- A UUID (token identifier)\n- An npm-prefixed token (format: `npm_` followed by 36 alphanumeric characters)\n\n**Requirements:**\n- Must be authenticated with a valid Bearer token\n- May require 2FA OTP depending on user settings\n\n**Web authentication flow:**\n- When `npm-auth-type=web` and `npm-command=token` headers are present and 2FA is required,\n  returns authentication URLs instead of an error\n",
+        "description": "Delete an npm access token. The token can be specified as:\n- A UUID (token identifier)\n- An npm-prefixed token (format: `npm_` followed by 36 alphanumeric characters)\n\n**Requirements:**\n- Must be authenticated with a valid Bearer token\n- May require 2FA OTP depending on user settings\n- **Granular Access Tokens with `bypass_2fa: true` are not permitted**\n  to call this endpoint and receive `403 Forbidden`. Token deletion\n  requires an interactive 2FA challenge.\n\n**Web authentication flow:**\n- When `npm-auth-type=web` and `npm-command=token` headers are present and 2FA is required,\n  returns authentication URLs instead of an error\n",
         "operationId": "deleteToken",
         "parameters": [
           {
@@ -2267,6 +2459,12 @@
         "security": [
           {
             "npmSessionToken": []
+          },
+          {
+            "npmAccessToken": []
+          },
+          {
+            "granularAccessToken": []
           }
         ],
         "responses": {
@@ -2389,6 +2587,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden2FABypassGAT"
           },
           "404": {
             "description": "Not found - Token does not exist",
@@ -2676,7 +2877,7 @@
           "Trust"
         ],
         "summary": "Add trusted publisher configuration for package",
-        "description": "Configure trusted publisher settings for a package to enable OIDC token exchange.\n\nThis endpoint allows users with write permission to the package to establish trust with CI/CD providers\n(GitHub Actions, GitLab CI, CircleCI, etc.) so that those services can publish to the package\nwithout requiring long-lived npm tokens. The configuration also defines the specific permissions\ngranted to the trusted publisher, controlling what actions it is allowed to perform.\n\n## Requirements\n- Package MUST exist\n- User MUST have write permission to the package\n- MUST have 2FA enabled on their account\n- User MUST be authenticated\n",
+        "description": "Configure trusted publisher settings for a package to enable OIDC token exchange.\n\nThis endpoint allows users with write permission to the package to establish trust with CI/CD providers\n(GitHub Actions, GitLab CI, CircleCI, etc.) so that those services can publish to the package\nwithout requiring long-lived npm tokens. The configuration also defines the specific permissions\ngranted to the trusted publisher, controlling what actions it is allowed to perform.\n\n## Requirements\n- Package MUST exist\n- User MUST have write permission to the package\n- MUST have 2FA enabled on their account\n- User MUST be authenticated\n- Granular Access Tokens with `bypass_2fa: true` are **not** permitted\n  to call this endpoint and receive `403 Forbidden`. Configuring\n  trusted publishers requires an interactive 2FA challenge.\n",
         "operationId": "configureTrustedPublisher",
         "parameters": [
           {
@@ -2955,13 +3156,16 @@
             }
           },
           "403": {
-            "description": "2fa required",
+            "description": "2fa required, insufficient permissions, or bypass-2FA GAT",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "message": {
+                      "type": "string"
+                    },
+                    "error": {
                       "type": "string"
                     }
                   }
@@ -2971,6 +3175,12 @@
                     "summary": "Please enable 2fa for your account",
                     "value": {
                       "message": "Please enable 2fa for your account"
+                    }
+                  },
+                  "bypass_2fa_gat": {
+                    "summary": "Bypass-2FA Granular Access Token not permitted",
+                    "value": {
+                      "error": "Granular access tokens that bypass two-factor authentication may not perform this action. For more info, visit: https://gh.io/npm-gat-bypass2fa-deprecation"
                     }
                   }
                 }
@@ -3032,7 +3242,7 @@
           "Trust"
         ],
         "summary": "Delete trusted publisher configuration",
-        "description": "Delete a specific trusted publisher configuration for a package by its UUID.\n\nThis endpoint allows users with write permission to the package to remove an existing trusted publisher\nconfiguration that was previously set up for OIDC token exchange.\n\n## Requirements\n- Package MUST exist\n- User MUST have write permission to the package\n- MUST have 2FA enabled on their account\n- User MUST be authenticated\n",
+        "description": "Delete a specific trusted publisher configuration for a package by its UUID.\n\nThis endpoint allows users with write permission to the package to remove an existing trusted publisher\nconfiguration that was previously set up for OIDC token exchange.\n\n## Requirements\n- Package MUST exist\n- User MUST have write permission to the package\n- MUST have 2FA enabled on their account\n- User MUST be authenticated\n- Granular Access Tokens with `bypass_2fa: true` are **not** permitted\n  to call this endpoint and receive `403 Forbidden`. Deleting a\n  trusted publisher configuration requires an interactive 2FA\n  challenge.\n",
         "operationId": "deleteTrustedPublisher",
         "parameters": [
           {
@@ -3180,13 +3390,16 @@
             }
           },
           "403": {
-            "description": "2fa required or insufficient permissions",
+            "description": "2fa required, insufficient permissions, or bypass-2FA GAT",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "message": {
+                      "type": "string"
+                    },
+                    "error": {
                       "type": "string"
                     }
                   }
@@ -3202,6 +3415,12 @@
                     "summary": "Insufficient permissions to delete configuration",
                     "value": {
                       "message": "Insufficient permissions to access trusted publisher config for the package"
+                    }
+                  },
+                  "bypass_2fa_gat": {
+                    "summary": "Bypass-2FA Granular Access Token not permitted",
+                    "value": {
+                      "error": "Granular access tokens that bypass two-factor authentication may not perform this action. For more info, visit: https://gh.io/npm-gat-bypass2fa-deprecation"
                     }
                   }
                 }
@@ -3257,12 +3476,12 @@
       "npmAccessToken": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Granular Access Token (GAT) with fine-grained permissions.\nThese tokens can be scoped to specific packages and operations.\n"
+        "description": "Granular Access Token (GAT) with fine-grained permissions.\nThese tokens can be scoped to specific packages and operations.\n\nGATs created with `bypass_2fa: true` cannot perform account,\ntoken, or org/team/package governance write operations — those\nrequests are rejected with `403 Forbidden`. See the Authentication\nsection above for the full list.\n"
       },
       "granularAccessToken": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Granular Access Token (GAT) with fine-grained permissions.\nThese tokens can be scoped to specific packages and operations.\n(Alias for npmAccessToken)\n"
+        "description": "Granular Access Token (GAT) with fine-grained permissions.\nThese tokens can be scoped to specific packages and operations.\n(Alias for npmAccessToken)\n\nGATs created with `bypass_2fa: true` cannot perform account,\ntoken, or org/team/package governance write operations — those\nrequests are rejected with `403 Forbidden`.\n"
       },
       "oidcExchangeToken": {
         "type": "http",
@@ -3474,6 +3693,111 @@
                 "role": {
                   "type": "string",
                   "description": "The role that the user was given in the org"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PackageVersionStatusBadRequest": {
+        "description": "The package name or the version is not valid. The version must be an exact semver version, so a range such as `^1.0.0` is rejected. This is checked before authentication, so it is returned even when no credential is supplied.\n",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PackageVersionStatusUnauthorized": {
+        "description": "Authentication is missing or invalid.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PackageVersionStatusForbidden": {
+        "description": "Package version status is not enabled for this package. This is the rollout gate only. Not having access to a package is reported as `404`, not here.\n",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PackageVersionStatusNotFound": {
+        "description": "The package version does not exist, or the authenticated user cannot read it. These are deliberately indistinguishable so the response does not reveal whether a package the caller cannot see exists.\n",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PackageVersionStatusTooManyRequests": {
+        "description": "The request was rate limited.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PackageVersionStatusInternalServerError": {
+        "description": "An internal error occurred.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PackageVersionStatusUnavailable": {
+        "description": "The package-version status service is temporarily unavailable.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
                 }
               }
             }
@@ -4144,9 +4468,57 @@
             }
           }
         }
+      },
+      "Forbidden2FABypassGAT": {
+        "description": "Forbidden: bypass-2FA GAT not permitted for account or governance writes",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "description": "Error message"
+                }
+              }
+            },
+            "example": {
+              "error": "Granular access tokens that bypass two-factor authentication may not perform this action. For more info, visit: https://gh.io/npm-gat-bypass2fa-deprecation"
+            }
+          }
+        }
       }
     },
     "schemas": {
+      "PackageVersionStatus": {
+        "type": "object",
+        "required": [
+          "packageName",
+          "version",
+          "status"
+        ],
+        "properties": {
+          "packageName": {
+            "type": "string",
+            "description": "The exact package name."
+          },
+          "version": {
+            "type": "string",
+            "description": "The exact package version."
+          },
+          "status": {
+            "type": "string",
+            "description": "Where the version currently stands.\n\n`published` means it is live and installable. `validating` means it is still on its way and the caller should check again shortly. `staged` means it is waiting for a maintainer to approve it. `blocked` means it did not pass automated validation and cannot be installed. `deleted` means it was published and has since been removed.\n",
+            "enum": [
+              "published",
+              "validating",
+              "staged",
+              "blocked",
+              "deleted"
+            ]
+          }
+        }
+      },
       "StagePackageList": {
         "type": "object",
         "properties": {
@@ -4215,6 +4587,14 @@
           "shasum": {
             "type": "string",
             "description": "The shasum of the package tarball."
+          },
+          "status": {
+            "type": "string",
+            "description": "The staged package lifecycle status. `validating` means automated review is still processing; `staged` means the version is ready for maintainer review and approval.\n",
+            "enum": [
+              "validating",
+              "staged"
+            ]
           }
         }
       },
@@ -4903,6 +5283,7 @@
         "Audit",
         "OIDC",
         "Org",
+        "Packages",
         "Publish",
         "Search",
         "Stage",
