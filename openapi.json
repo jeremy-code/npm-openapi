@@ -27,7 +27,7 @@
     {
       "name": "Authentication",
       "x-displayName": "Authentication & Authorization",
-      "description": "The npm registry API supports multiple types of bearer tokens for authentication:\n\n**Token Types:**\n\n**1. npm Session Token (`npmSessionToken`)**\nTraditional npm session tokens created via `npm login`. These tokens:\n- Are tied to a user account\n- Inherit the user's permissions\n- Have limited expiration\n- **Required for:** User account management, token creation/management\n\n**2. npm Access Token (`npmAccessToken`)**\nFine-grained tokens with specific permissions:\n- Can be scoped to specific packages and organizations\n- Can be scoped to specific operations (read, write, publish)\n- Have configurable expiration\n- **Supported for:** Most package operations where explicitly documented\n\n**3. OIDC id_token (`oidcIdToken`)**\nTokens from supported Identity Providers (CI/CD systems):\n- From GitHub Actions, GitLab CI, CircleCI, etc.\n- Must have `aud` claim set to `npm:registry.npmjs.org`\n- Short-lived tokens\n- **Required for:** OIDC token exchange only\n\n**4. OIDC Exchange Token (`oidcExchangeToken`)**\nShort-lived tokens obtained from OIDC token exchange:\n- Package-scoped permissions\n- Limited lifetime (typically 1 hour)\n- **Supported for:** Package publishing and management operations\n\n**Endpoint Authorization:**\n\nEach endpoint specifies which token types are accepted via security schemes.\nSome endpoints may accept multiple token types, others are restricted to specific types.\n\n**Example:**\n- `/tokens` endpoint: Only accepts `npmSessionToken`\n- `/oidc/token/exchange` endpoint: Only accepts `oidcIdToken`\n- Package publishing: May accept `npmSessionToken`, `npmAccessToken`, or `oidcExchangeToken`\n\n**Granular Access Tokens with `bypass_2fa`:**\n\nGranular Access Tokens (GATs) created with `bypass_2fa: true` are\nallowed to perform automation flows such as direct publish, but they\nare **not** permitted to perform account-identity or governance write\noperations. Requests to those endpoints authenticated with a\nbypass-2FA GAT are rejected with `403 Forbidden` and must instead be\nperformed via an interactive 2FA challenge (npm website, or an npm\nsession token / non-bypass GAT with a valid `npm-otp`).\n\nOperations rejected for bypass-2FA GATs include (non-exhaustive):\n\n- Token management — `POST /-/npm/v1/tokens`, `DELETE /-/npm/v1/tokens/token/{token}`\n- Account settings — change password, change email, change 2FA\n  configuration, generate recovery codes, update profile\n- Package governance — `POST /-/package/{escapedPackageName}/access`,\n  `POST /-/package/{package}/trust`,\n  `DELETE /-/package/{package}/trust/{config-uuid}`,\n  maintainer edits, and package/binary deletion (unpublish)\n- Org and team governance —\n  `PUT`/`DELETE /-/org/{orgName}/user`,\n  `PUT /-/org/{orgName}/team`,\n  `DELETE /-/org/{orgName}/{teamName}`,\n  `PUT`/`DELETE /-/org/{orgName}/{teamName}/user`,\n  `PUT`/`DELETE /-/team/{orgName}/{teamName}/package`\n\nDirect publish (`PUT /{escapedPackageName}`) remains functional for\nbypass-2FA GATs.\n"
+      "description": "The npm registry API supports multiple types of bearer tokens for authentication:\n\n**Token Types:**\n\n**1. npm Session Token (`npmSessionToken`)**\nTraditional npm session tokens created via `npm login`. These tokens:\n- Are tied to a user account\n- Inherit the user's permissions\n- Have limited expiration\n- **Required for:** User account management, token creation/management\n\n**2. npm Access Token (`npmAccessToken`)**\nFine-grained tokens with specific permissions:\n- Can be scoped to specific packages and organizations\n- Can be scoped to specific operations (read, write, publish)\n- Have configurable expiration\n- **Supported for:** Most package operations where explicitly documented\n\n**3. OIDC id_token (`oidcIdToken`)**\nTokens from supported Identity Providers (CI/CD systems):\n- From GitHub Actions, GitLab CI, CircleCI, etc.\n- Must have `aud` claim set to `npm:registry.npmjs.org`\n- Short-lived tokens\n- **Required for:** OIDC token exchange only\n\n**4. OIDC Exchange Token (`oidcExchangeToken`)**\nShort-lived tokens obtained from OIDC token exchange:\n- Package-scoped permissions\n- Limited lifetime (typically 1 hour)\n- **Supported for:** Package publishing and management operations\n\n**Endpoint Authorization:**\n\nEach endpoint specifies which token types are accepted via security schemes.\nSome endpoints may accept multiple token types, others are restricted to specific types.\n\n**Example:**\n- `/tokens` endpoint: Only accepts `npmSessionToken`\n- `/oidc/token/exchange` endpoint: Only accepts `oidcIdToken`\n- Package publishing: May accept `npmSessionToken`, `npmAccessToken`, or `oidcExchangeToken`\n\n**Granular Access Tokens with `bypass_2fa`:**\n\nGranular Access Tokens (GATs) created with `bypass_2fa: true` are\nallowed to perform automation flows within their scopes and publish policy, but they\nare **not** permitted to perform account-identity or governance write\noperations. Requests to those endpoints authenticated with a\nbypass-2FA GAT are rejected with `403 Forbidden` and must instead be\nperformed via an interactive 2FA challenge (npm website, or an npm\nsession token / non-bypass GAT with a valid `npm-otp`).\n\nOperations rejected for bypass-2FA GATs include (non-exhaustive):\n\n- Token management — `POST /-/npm/v1/tokens`, `DELETE /-/npm/v1/tokens/token/{token}`\n- Account settings — change password, change email, change 2FA\n  configuration, generate recovery codes, update profile\n- Package governance — `POST /-/package/{escapedPackageName}/access`,\n  `POST /-/package/{package}/trust`,\n  `DELETE /-/package/{package}/trust/{config-uuid}`,\n  maintainer edits, and package/binary deletion (unpublish)\n- Org and team governance —\n  `PUT`/`DELETE /-/org/{orgName}/user`,\n  `PUT /-/org/{orgName}/team`,\n  `DELETE /-/org/{orgName}/{teamName}`,\n  `PUT`/`DELETE /-/org/{orgName}/{teamName}/user`,\n  `PUT`/`DELETE /-/team/{orgName}/{teamName}/package`\n\nDirect publish (`PUT /{escapedPackageName}`) remains functional for\ndirect-capable bypass-2FA GATs. It is not permitted for stage-only GATs.\n"
     },
     {
       "name": "Tokens",
@@ -739,6 +739,7 @@
           "Publish"
         ],
         "summary": "Publish a new version of a package",
+        "description": "Publish a new package version directly to the registry.\n\nStage-only Granular Access Tokens cannot publish new versions through this\nendpoint, even with `bypass_2fa: true`. Requests rejected by the publish-policy\ncheck return `403 Forbidden` with `E_STAGE_REQUIRED` in the error message.\nEarlier authentication or package authorization checks can return other errors,\nincluding `404 Not Found`. Rejected requests are not automatically redirected\nto staging. Use `POST /-/stage/package/{package-name}`\n(`npm stage publish`), followed by maintainer approval with 2FA.\n\nThe stage-only policy restricts new-version publication. Existing authorization \nand 2FA requirements still apply.\n",
         "operationId": "publish",
         "requestBody": {
           "required": true,
@@ -1798,7 +1799,7 @@
           "Tokens"
         ],
         "summary": "Create npm access token",
-        "description": "Create a new npm access token with customizable permissions, scope restrictions,\nexpiration, and CIDR IP range limitations.\n\n**Requirements:**\n- Must be authenticated\n- **Two-factor authentication is required for this endpoint**\n  - If 2FA is enabled on your account, provide the OTP via the `npm-otp` header\n  - If 2FA is not enabled, an email OTP will be sent and must be provided via the `npm-otp` header\n  - For WebAuthn users, the OTP is returned in the `doneUrl` after authentication\n- **Granular Access Tokens with `bypass_2fa: true` are not permitted**\n  to call this endpoint and receive `403 Forbidden`. Token creation\n  (and escalation) requires an interactive 2FA challenge.\n\n**Important notices:**\n- All responses include security notices via the `npm-notice` header regarding token limitations\n",
+        "description": "Create a new npm access token with customizable permissions, scope restrictions,\nexpiration, and CIDR IP range limitations.\n\nTo create a stage-only Granular Access Token (GAT), set\n`packages_and_scopes_permission` to `read-write-stage-only` and select\nat least one package or scope. This grants package write access but\nrestricts publishing new versions to `POST /-/stage/package/{package-name}`\n(`npm stage publish`). Direct publication is not allowed or automatically staged.\nRequests rejected by the publish-policy check return `403 Forbidden` with\n`E_STAGE_REQUIRED` in the error message. Earlier authentication or package\nauthorization checks can return other errors, including `404 Not Found`.\nA maintainer must approve the staged version with 2FA before publication.\nStage-only is not a valid value for `orgs_permission`.\n\nThe publish restriction is separate from `bypass_2fa`. Stage-only tokens\ncan be created with either setting, and existing scope, permission, and\n2FA checks still apply to all operations. The restriction does not itself\nremove other package write capabilities, such as changing dist-tags or\ndeprecating versions.\n\n**Requirements:**\n- Must be authenticated\n- **Two-factor authentication is required for this endpoint**\n  - If 2FA is enabled on your account, provide the OTP via the `npm-otp` header\n  - If 2FA is not enabled, an email OTP will be sent and must be provided via the `npm-otp` header\n  - For WebAuthn users, the OTP is returned in the `doneUrl` after authentication\n- **Granular Access Tokens with `bypass_2fa: true` are not permitted**\n  to call this endpoint and receive `403 Forbidden`. Token creation\n  (and escalation) requires an interactive 2FA challenge.\n\n**Important notices:**\n- All responses include security notices via the `npm-notice` header regarding token limitations\n",
         "operationId": "createToken",
         "parameters": [
           {
@@ -1874,11 +1875,11 @@
                         "type": "string"
                       }
                     ],
-                    "description": "Expiration in days (number) or ISO date string. Read-write tokens: maximum 90 days, defaults to 7 days. Read-only tokens: unlimited maximum, defaults to 30 days"
+                    "description": "Expiration in days (number) or ISO date string. Read-write tokens, including read-write-stage-only: maximum 90 days, defaults to 7 days. Read-only tokens: unlimited maximum, defaults to 30 days"
                   },
                   "bypass_2fa": {
                     "type": "boolean",
-                    "description": "Allow token to bypass 2FA requirements for automation\nflows such as direct publish.\n\nTokens created with `bypass_2fa: true` **cannot** perform\naccount, token, or org/team/package governance write\noperations (for example: creating or deleting tokens,\nchanging package access or trust configuration,\nadding/removing org or team members, granting/revoking\nteam package access, unpublishing). Those requests are\nrejected with `403 Forbidden` and must be performed via\nan interactive 2FA challenge.\n",
+                    "description": "Allow token to bypass 2FA requirements for automation\nflows permitted by its package permissions and publish policy.\nThis does not allow a stage-only token to publish directly or\nbypass the 2FA challenge when approving a staged version.\n\nTokens created with `bypass_2fa: true` **cannot** perform\naccount, token, or org/team/package governance write\noperations (for example: creating or deleting tokens,\nchanging package access or trust configuration,\nadding/removing org or team members, granting/revoking\nteam package access, unpublishing). Those requests are\nrejected with `403 Forbidden` and must be performed via\nan interactive 2FA challenge.\n",
                     "default": false
                   },
                   "cidr": {
@@ -1915,9 +1916,10 @@
                     "enum": [
                       "read-only",
                       "read-write",
+                      "read-write-stage-only",
                       "no-access"
                     ],
-                    "description": "Permission for packages and scopes. Defaults to \"read-only\" if packages/scopes arrays have length > 0, otherwise \"no-access\""
+                    "description": "Permission for packages and scopes. Defaults to \"read-only\" if\npackages/scopes arrays have length > 0, otherwise \"no-access\".\n\n- `read-only`: read package data.\n- `read-write`: package write access, including direct and staged publishing.\n- `read-write-stage-only`: package write access with new versions restricted\n  to staged publishing and subsequent maintainer approval with 2FA.\n- `no-access`: no package or scope permissions.\n"
                   },
                   "orgs_permission": {
                     "type": "string",
@@ -1933,6 +1935,22 @@
                   "password",
                   "name"
                 ]
+              },
+              "examples": {
+                "stageOnly": {
+                  "summary": "Stage-only GAT for an existing package",
+                  "value": {
+                    "password": "<your npm password>",
+                    "name": "staged-release-ci",
+                    "packages": [
+                      "@myorg/release-tools"
+                    ],
+                    "packages_and_scopes_permission": "read-write-stage-only",
+                    "orgs_permission": "no-access",
+                    "expires": 7,
+                    "bypass_2fa": true
+                  }
+                }
               }
             }
           }
@@ -2039,7 +2057,7 @@
                           }
                         }
                       },
-                      "description": "List of permissions granted to this token."
+                      "description": "List of permissions granted to this token.\n"
                     },
                     "scopes": {
                       "type": "array",
@@ -2103,7 +2121,7 @@
                   "invalidPackagesPermission": {
                     "summary": "Invalid packages_and_scopes_permission value",
                     "value": {
-                      "error": "Invalid packages_and_scopes_permission. Must be one of: no-access, read-only, read-write"
+                      "error": "Invalid packages_and_scopes_permission. Must be one of: no-access, read-only, read-write, read-write-stage-only"
                     }
                   },
                   "invalidOrgsPermission": {
